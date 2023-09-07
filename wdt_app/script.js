@@ -30,7 +30,8 @@ const getFlightOffersSearch = () => {
   const locationCode = originLocationCode.ariaValueMax.trim(); // Get User selected name and remove extra spaces 
   if(!locationCode) return; // Reture if locationCode is empty
 
-  const AMADEUS_API_URL = 'https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=${}&destinationLocationCode=${}&departureDate=2023-09-30&adults=1&nonStop=false&max=250'
+  const AMADEUS_API_URL = 'https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=${locationCode}&destinationLocationCode=${}&departureDate=${}&adults=1&nonStop=false&max=250'
+
 
 
 }
