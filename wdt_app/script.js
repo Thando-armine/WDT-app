@@ -27,15 +27,18 @@ const departureDate = document.getElementById("departure-date")
 const API_KEY = "quuCkANXusUPoSd1GR2IiA9cNVjDwhQA"; // API key for Amadeus
 
 const getFlightOffersSearch = () => {
-  const locationCode = originLocationCode.ariaValueMax.trim(); // Get User selected name and remove extra spaces 
-  if(!locationCode) return; // Reture if locationCode is empty
+  const originLocationCode = originLocationCode.value.trim(); // Get User selected name and remove extra spaces 
+  if(!originLocationCode) return; // Reture if locationCode is empty
 
-  const AMADEUS_API_URL = 'https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=${locationCode}&destinationLocationCode=${}&departureDate=${}&adults=1&nonStop=false&max=250'
-
-
+  fetch(Amadeus).then(res.json()).then(data => {
+    if(!data.lenght) return alert('No flights found')
+  })
 
 }
 
+
+amadeus.referenceData.urls.flightOffers.get({  });
+ 
 /*
 // Find the cheapest flights from SYD to BKK
 amadeus.shopping.flightOffersSearch.post(JSON.stringify({
