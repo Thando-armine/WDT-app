@@ -1,123 +1,166 @@
-var Amadeus = require("amadeus");
-var amadeus = new Amadeus({
-  clientId: 'quuCkANXusUPoSd1GR2IiA9cNVjDwhQA',
-  clientSecret: 'yYOeAj8GYp6usZSw'
+/** @format */
+
+const originInput = document.getElementById('origin-input');
+const originOptions = document.getElementById('origin-options');
+const destinationInput = document.getElementById('destination-input');
+const destinationOptions = document.getElementById('destination-options');
+const flightTypeSelect = document.getElementById('flight-type-select');
+const departureDateInput = document.getElementById('departure-date-input');
+const returnDate = document.getElementById('return-date');
+const returnDateInput = document.getElementById('return-date-input');
+const travelClassSelect = document.getElementById('travel-class-select');
+const adultsInput = document.getElementById('adults-input');
+const childrenInput = document.getElementById('children-input');
+const infantsInput = document.getElementById('infants-input');
+const searchButton = document.getElementById('search-button');
+const searchResultsSeparator = document.getElementById(
+  'search-results-separator'
+);
+const searchResultsLoader = document.getElementById('search-results-loader');
+const searchResults = document.getElementById('search-results');
+const autocompleteTimeout = 300;
+
+let autocompleteTimeoutHandle = 0;
+let destinationCityCodes = {};
+let originCityCodes = {};
+
+const reset = () => {
+  originInput.value = '';
+  destinationInput.value = '';
+  flightTypeSelect.value = 'one-way';
+  departureDateInput.valueAsDate = new Date();
+  returnDateInput.valueAsDate = new Date();
+  returnDate.classList.add('d-none');
+  travelClassSelect.value = 'ECONOMY';
+  adultsInput.value = 1;
+  childrenInput.value = 0;
+  infantsInput.value = 0;
+  searchButton.disabled = true;
+  searchResultsSeparator.classList.add('d-none');
+  searchResultsLoader.classList.add('d-none');
+};
+const formatDate = (date) => {
+  const [formattedDate] = date.toISOString().split('T');
+
+  return formattedDate;
+};
+const formatNumber = (number) => {
+  return `${Math.abs(parseInt(number))}`;
+};
+const autocomplete = (input, datalist, cityCodes) => {
+  clearTimeout(autocompleteTimeoutHandle);
+  autocompleteTimeoutHandle = setTimeout(async () => {
+    try {
+      const params = new URLSearchParams({ keyword: input.value });
+      const response = await fetch(`/api/autocomplete?${params}`);
+      const data = await response.json();
+
+      datalist.textContent = '';
+      data.forEach((entry) => {
+        cityCodes[entry.name.toLowerCase()] = entry.iataCode;
+        datalist.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${entry.name}"></option>`
+        );
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }, autocompleteTimeout);
+};
+const search = async () => {
+  try {
+    const returns = flightTypeSelect.value === 'round-trip';
+    const params = new URLSearchParams({
+      origin: originCityCodes[originInput.value.toLowerCase()],
+      destination: destinationCityCodes[destinationInput.value.toLowerCase()],
+      departureDate: formatDate(departureDateInput.valueAsDate),
+      adults: formatNumber(adultsInput.value),
+      children: formatNumber(childrenInput.value),
+      infants: formatNumber(infantsInput.value),
+      travelClass: travelClassSelect.value,
+      ...(returns
+        ? { returnDate: formatDate(returnDateInput.valueAsDate) }
+        : {}),
+    });
+    const response = await fetch(`/api/search?${params}`);
+    const data = await response.json();
+
+    return data;
+  } catch (error) {
+    console.error(error);
+  }
+};
+const showResults = (results) => {
+  if (results.length === 0) {
+    searchResults.insertAdjacentHTML(
+      'beforeend',
+      `<li class="list-group-item d-flex justify-content-center align-items-center" id="search-no-results">
+        No results
+      </li>`
+    );
+  }
+  results.forEach(({ itineraries, price }) => {
+    const priceLabel = `${price.total} ${price.currency}`;
+
+    searchResults.insertAdjacentHTML(
+      'beforeend',
+      `<li class="flex-column flex-sm-row list-group-item d-flex justify-content-between align-items-sm-center">
+        ${itineraries
+          .map((itinerary, index) => {
+            const [, hours, minutes] = itinerary.duration.match(/(\d+)H(\d+)?/);
+            const travelPath = itinerary.segments
+              .flatMap(({ arrival, departure }, index, segments) => {
+                if (index === segments.length - 1) {
+                  return [departure.iataCode, arrival.iataCode];
+                }
+                return [departure.iataCode];
+              })
+              .join(' → ');
+
+            return `
+            <div class="flex-column flex-1 m-2 d-flex">
+              <small class="text-muted">${
+                index === 0 ? 'Outbound' : 'Return'
+              }</small>
+              <span class="fw-bold">${travelPath}</span>
+              <div>${hours || 0}h ${minutes || 0}m</div>
+            </div>
+          `;
+          })
+          .join('')}
+        <span class="bg-primary rounded-pill m-2 badge fs-6">${priceLabel}</span>
+      </li>`
+    );
+  });
+};
+
+document.body.addEventListener('change', () => {
+  clearTimeout(autocompleteTimeoutHandle);
+  searchButton.disabled = !originInput.value || !destinationInput.value;
+});
+originInput.addEventListener('input', () => {
+  autocomplete(originInput, originOptions, originCityCodes);
+});
+destinationInput.addEventListener('input', () => {
+  autocomplete(destinationInput, destinationOptions, destinationCityCodes);
+});
+flightTypeSelect.addEventListener('change', () => {
+  if (flightTypeSelect.value === 'one-way') {
+    returnDate.classList.add('d-none');
+  } else {
+    returnDate.classList.remove('d-none');
+  }
+});
+searchButton.addEventListener('click', async () => {
+  searchResultsSeparator.classList.remove('d-none');
+  searchResultsLoader.classList.remove('d-none');
+  searchResults.textContent = '';
+
+  const results = await search();
+
+  searchResultsLoader.classList.add('d-none');
+  showResults(results);
 });
 
-
-amadeus.shopping.flightOffersSearch.get({
-  originLocationCode: 'SYD',
-  destinationLocationCode: 'BKK',
-  departureDate: '2022-08-01',
-  adults: '2'
-}).then(function (response) {
-  console.log(response);
-}).catch(function (response) {
-  console.error(response);
-});
-
-// Find the cheapest flights
-
-
-const originLocationCode = document.getElementById("origin")
-const destinationLocationCode = document.getElementById("depart")
-const departureDate = document.getElementById("departure-date")
-
-
-const API_KEY = "quuCkANXusUPoSd1GR2IiA9cNVjDwhQA"; // API key for Amadeus
-
-const getFlightOffersSearch = () => {
-  const originLocationCode = originLocationCode.value.trim(); // Get User selected name and remove extra spaces 
-  if(!originLocationCode) return; // Reture if locationCode is empty
-
-  fetch(Amadeus).then(res.json()).then(data => {
-    if(!data.lenght) return alert('No flights found')
-  })
-
-}
-
-
-amadeus.referenceData.urls.flightOffers.get({  });
- 
-/*
-// Find the cheapest flights from SYD to BKK
-amadeus.shopping.flightOffersSearch.post(JSON.stringify({
-  "currencyCode": "USD",
-  "originDestinations": [{
-    "id": "1",
-    "originLocationCode": "SYD",
-    "destinationLocationCode": "BKK",
-    "departureDateTimeRange": {
-      "date": "2023-09-21",
-      "time": "10:00:00"
-    }
-  },
-  {
-    "id": "2",
-    "originLocationCode": "BKK",
-    "destinationLocationCode": "SYD",
-    "departureDateTimeRange": {
-      "date": "2023-09-30",
-      "time": "17:00:00"
-    }
-  }
-  ],
-  "travelers": [{
-    "id": "1",
-    "travelerType": "ADULT",
-    "fareOptions": [
-      "STANDARD"
-    ]
-  },
-  {
-    "id": "2",
-    "travelerType": "CHILD",
-    "fareOptions": [
-      "STANDARD"
-    ]
-  }
-  ],
-  "sources": [
-    "GDS"
-  ],
-  "searchCriteria": {
-    "maxFlightOffers": 50,
-    "flightFilters": {
-      "cabinRestrictions": [{
-        "cabin": "BUSINESS",
-        "coverage": "MOST_SEGMENTS",
-        "originDestinationIds": [
-          "1"
-        ]
-      }],
-      "carrierRestrictions": {
-        "excludedCarrierCodes": [
-          "AA",
-          "TP",
-          "AZ"
-        ]
-      }
-    }
-  }
-})).then(function (response) {
-  console.log(response);
-}).catch(function (response) {
-  console.error(response);
-});
-
-
-
-function dynamicDropDown(listIndex) {
-
-    document.getElementById("infants").length = 0;
-    document.getElementById("children").length = 0;
-  
-    for (let i = 0; i < Number(listIndex) + 1; i++) {
-      document.getElementById("infants").options[i] = new Option(i.toString(), i);
-    }
-  
-    for (let i = 0; i < 9 - Number(listIndex) + 1; i++) {
-      document.getElementById("children").options[i] = new Option(i.toString(), i);
-    }
-  }
-  */
+reset();
