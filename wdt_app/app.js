@@ -9,7 +9,7 @@ const amadeus = new Amadeus({
   clientId: process.env.API_KEY,
   clientSecret: process.env.API_SECRET,
 });
-const port = 3000;
+const port = 5500;
 
 app.use(express.static('public'));
 app.get('/api/autocomplete', async (request, response) => {
@@ -48,3 +48,17 @@ app.get('/api/search', async (request, response) => {
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
 });
+
+amadeus.shopping.flightOffersSearch
+  .get({
+    originLocationCode: 'BOS',
+    destinationLocationCode: 'LON',
+    departureDate: '2020-08-01',
+    adults: '2',
+  })
+  .then(function (data) {
+    console.log(JSON.stringify(data));
+  })
+  .catch(function (responseError) {
+    console.log(JSON.stringify(responseError));
+  });
